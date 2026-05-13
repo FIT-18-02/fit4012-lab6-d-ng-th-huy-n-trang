@@ -16,20 +16,19 @@ Lab này kế thừa ý tưởng từ Lab 3 DES Socket, nhưng nâng cấp theo 
 
 ## Team members
 
-- **Thành viên 1**: TODO_MEMBER_1 - MSSV: TODO_MEMBER_1_ID
-- **Thành viên 2**: TODO_MEMBER_2 - MSSV: TODO_MEMBER_2_ID
-
+- **Thành viên 1**: Dương Thị Huyền Trang - MSSV: 1871020579
+- **Thành viên 2**: Phạm Ánh Tuyết - MSSV: 1871020643
 ## Task division
 
-- **Thành viên 1 phụ trách chính**: TODO_ROLE_MEMBER_1
-- **Thành viên 2 phụ trách chính**: TODO_ROLE_MEMBER_2
+- **Thành viên 1 phụ trách chính**:  Dương Thị Huyền Trang
+- **Thành viên 2 phụ trách chính**: Phạm Ánh Tuyết
 - **Phần làm chung**: TODO_SHARED_WORK
 
 ## Demo roles
 
-- **Demo Sender / kênh khóa / log gửi**: TODO_DEMO_ROLE_1
-- **Demo Receiver / kênh dữ liệu / giải mã**: TODO_DEMO_ROLE_2
-- **Cả hai cùng trả lời threat model và ethics**: TODO_DEMO_ROLE_SHARED
+- **Demo Sender / kênh khóa / log gửi**: Dương Thị Huyền Trang
+- **Demo Receiver / kênh dữ liệu / giải mã**:  Phạm Ánh Tuyết
+- **Cả hai cùng trả lời threat model và ethics**: Dương Thị Huyền Trang và  Phạm Ánh Tuyết
 
 ---
 
