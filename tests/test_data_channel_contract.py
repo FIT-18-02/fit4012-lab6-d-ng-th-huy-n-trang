@@ -2,7 +2,7 @@ import sys
 from pathlib import Path
 
 sys.path.append(str(Path(__file__).resolve().parents[1]))
-
+import pytest
 from aes_socket_utils import build_data_packet, parse_length_header
 
 # Test packet trên data channel đúng format:
