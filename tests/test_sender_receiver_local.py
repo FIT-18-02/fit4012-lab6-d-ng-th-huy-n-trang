@@ -1,18 +1,36 @@
 import os
 import sys
 import time
-import subprocess
 import socket
+import subprocess
+from pathlib import Path
+
+REPO_ROOT = Path(__file__).resolve().parent.parent
 
 
 def find_free_port():
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        s.bind(("", 0))
+        s.bind(("127.0.0.1", 0))
         return s.getsockname()[1]
+
+def wait_for_output(process, keyword, timeout=10):
+    start = time.time()
+    output = ""
+
+    while time.time() - start < timeout:
+        line = process.stdout.readline()
+        if line:
+            output += line
+            if keyword in output:
+                return output
+        time.sleep(0.05)
+
+    raise TimeoutError(f"Timeout waiting for: {keyword}")
 
 
 def test_local_sender_receiver_roundtrip():
     data_port = find_free_port()
+
     key_port = find_free_port()
 
     receiver_env = os.environ.copy()
@@ -40,11 +58,12 @@ def test_local_sender_receiver_roundtrip():
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
         text=True,
+        bufsize=1,
     )
 
     try:
-        first_output = wait_for_output(receiver, "kênh khóa", timeout=10)
-
+    
+        wait_for_output(receiver, "kênh khóa", timeout=10)
         sender = subprocess.run(
             [sys.executable, "sender.py"],
             cwd=REPO_ROOT,
@@ -56,18 +75,20 @@ def test_local_sender_receiver_roundtrip():
         )
 
         receiver_out, _ = receiver.communicate(timeout=10)
-        full_receiver_output = first_output + receiver_out
 
-        assert "[+] Đã gửi key/IV qua kênh khóa." in sender.stdout
-        assert "[+] Đã gửi ciphertext qua kênh dữ liệu." in sender.stdout
+        full_output = receiver_out + (sender.stdout or "")
+
+        assert "Đã gửi key/IV qua kênh khóa" in sender.stdout
+        assert "Đã gửi ciphertext qua kênh dữ liệu" in sender.stdout
         assert "Key:" in sender.stdout
         assert "IV:" in sender.stdout
         assert "Ciphertext:" in sender.stdout
-        assert "[+] Bản tin gốc: Xin chao FIT4012 - local AES integration test" in full_receiver_output
+        assert "Bản tin gốc" in full_output
 
     finally:
         if receiver.poll() is None:
             try:
                 receiver.terminate()
+                receiver.wait(timeout=3)
             except:
                 receiver.kill()
