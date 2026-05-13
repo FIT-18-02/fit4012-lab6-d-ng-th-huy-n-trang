@@ -1,3 +1,16 @@
+import os
+import sys
+import time
+import subprocess
+import socket
+
+
+def find_free_port():
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s.bind(("", 0))
+        return s.getsockname()[1]
+
+
 def test_local_sender_receiver_roundtrip():
     data_port = find_free_port()
     key_port = find_free_port()
@@ -30,9 +43,7 @@ def test_local_sender_receiver_roundtrip():
     )
 
     try:
-        time.sleep(2)
-
-        first_output = wait_for_output(receiver, "kênh khóa")
+        first_output = wait_for_output(receiver, "kênh khóa", timeout=10)
 
         sender = subprocess.run(
             [sys.executable, "sender.py"],
@@ -56,4 +67,7 @@ def test_local_sender_receiver_roundtrip():
 
     finally:
         if receiver.poll() is None:
-            receiver.kill()
+            try:
+                receiver.terminate()
+            except:
+                receiver.kill()
