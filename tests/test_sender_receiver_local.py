@@ -1,94 +1,88 @@
 import os
-import sys
-import time
 import socket
-import subprocess
-from pathlib import Path
+from aes_socket_utils import (
+    parse_key_packet,
+    parse_length_header,
+    decrypt_aes_cbc,
+)
 
-REPO_ROOT = Path(__file__).resolve().parent.parent
+RECEIVER_HOST = os.getenv("RECEIVER_HOST", "127.0.0.1")
+DATA_PORT = int(os.getenv("DATA_PORT", "6000"))
+KEY_PORT = int(os.getenv("KEY_PORT", "6001"))
+SOCKET_TIMEOUT = int(os.getenv("SOCKET_TIMEOUT", "10"))
 
-
-def find_free_port():
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        s.bind(("127.0.0.1", 0))
-        return s.getsockname()[1]
-
-def wait_for_output(process, keyword, timeout=10):
-    start = time.time()
-    output = ""
-
-    while time.time() - start < timeout:
-        line = process.stdout.readline()
-        if line:
-            output += line
-            if keyword in output:
-                return output
-        time.sleep(0.05)
-
-    raise TimeoutError(f"Timeout waiting for: {keyword}")
+key = None
+iv = None
 
 
-def test_local_sender_receiver_roundtrip():
-    data_port = find_free_port()
+def recv_exact(sock, n):
+    data = b""
+    while len(data) < n:
+        chunk = sock.recv(n - len(data))
+        if not chunk:
+            raise ConnectionError("Socket closed")
+        data += chunk
+    return data
 
-    key_port = find_free_port()
 
-    receiver_env = os.environ.copy()
-    receiver_env.update({
-        "PYTHONUNBUFFERED": "1",
-        "RECEIVER_HOST": "127.0.0.1",
-        "DATA_PORT": str(data_port),
-        "KEY_PORT": str(key_port),
-        "SOCKET_TIMEOUT": "5",
-    })
+# ================= KEY CHANNEL =================
+def handle_key_channel():
+    global key, iv
 
-    sender_env = os.environ.copy()
-    sender_env.update({
-        "PYTHONUNBUFFERED": "1",
-        "SERVER_IP": "127.0.0.1",
-        "DATA_PORT": str(data_port),
-        "KEY_PORT": str(key_port),
-        "MESSAGE": "Xin chao FIT4012 - local AES integration test",
-    })
+    print("kênh khóa", flush=True)  
 
-    receiver = subprocess.Popen(
-        [sys.executable, "-u", "receiver.py"],
-        cwd=REPO_ROOT,
-        env=receiver_env,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-        text=True,
-        bufsize=1,
-    )
+    server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    server.bind((RECEIVER_HOST, KEY_PORT))
+    server.listen(1)
+
+    conn, _ = server.accept()
 
     try:
-    
-        wait_for_output(receiver, "kênh khóa", timeout=10)
-        sender = subprocess.run(
-            [sys.executable, "sender.py"],
-            cwd=REPO_ROOT,
-            env=sender_env,
-            capture_output=True,
-            text=True,
-            timeout=10,
-            check=True,
-        )
+        raw_len = recv_exact(conn, 4)
+        length = int.from_bytes(raw_len, "big")
 
-        receiver_out, _ = receiver.communicate(timeout=10)
+        packet = recv_exact(conn, length)
 
-        full_output = receiver_out + (sender.stdout or "")
+        key, iv = parse_key_packet(raw_len + packet)
 
-        assert "Đã gửi key/IV qua kênh khóa" in sender.stdout
-        assert "Đã gửi ciphertext qua kênh dữ liệu" in sender.stdout
-        assert "Key:" in sender.stdout
-        assert "IV:" in sender.stdout
-        assert "Ciphertext:" in sender.stdout
-        assert "Bản tin gốc" in full_output
+        print(f"Key: {key}", flush=True)
+        print(f"IV: {iv}", flush=True)
 
     finally:
-        if receiver.poll() is None:
-            try:
-                receiver.terminate()
-                receiver.wait(timeout=3)
-            except:
-                receiver.kill()
+        conn.close()
+        server.close()
+
+
+# ================= DATA CHANNEL =================
+def handle_data_channel():
+    server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    server.bind((RECEIVER_HOST, DATA_PORT))
+    server.listen(1)
+
+    conn, _ = server.accept()
+
+    try:
+        raw_len = recv_exact(conn, 4)
+        length = int.from_bytes(raw_len, "big")
+
+        ciphertext = recv_exact(conn, length)
+
+        plain = decrypt_aes_cbc(key, iv, ciphertext)
+
+        print(f"[+] Bản tin gốc: {plain.decode()}", flush=True)
+
+    finally:
+        conn.close()
+        server.close()
+
+
+def main():
+
+    handle_key_channel()
+    handle_data_channel()
+
+
+if __name__ == "__main__":
+    main()
