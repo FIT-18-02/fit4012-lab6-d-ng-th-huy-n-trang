@@ -1,7 +1,9 @@
-import pytest
+import sys
+from pathlib import Path
+
+sys.path.append(str(Path(__file__).resolve().parents[1]))
 
 from aes_socket_utils import build_key_packet, parse_key_packet
-
 
 # Test key channel với AES-128
 def test_key_channel_contract_aes_128():
