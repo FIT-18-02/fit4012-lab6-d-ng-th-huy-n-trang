@@ -57,8 +57,10 @@ def test_local_sender_receiver_roundtrip():
         text=True,
     )
 
-    try:
-        first_output = wait_for_output(receiver, "kênh khóa")
+   try:
+    time.sleep(2)
+
+    first_output = wait_for_output(receiver, "kênh khóa")
 
         sender = subprocess.run(
             [sys.executable, "sender.py"],
