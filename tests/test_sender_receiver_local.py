@@ -1,31 +1,3 @@
-import os
-import socket
-import subprocess
-import sys
-import time
-from pathlib import Path
-
-REPO_ROOT = Path(__file__).resolve().parents[1]
-
-
-def find_free_port() -> int:
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
-        sock.bind(("127.0.0.1", 0))
-        return sock.getsockname()[1]
-
-
-def wait_for_output(process, text: str, timeout: float = 5.0) -> str:
-    collected = []
-    start = time.time()
-    while time.time() - start < timeout:
-        line = process.stdout.readline()
-        if line:
-            collected.append(line)
-            if text in line:
-                return "".join(collected)
-    raise AssertionError(f"Không thấy output '{text}'. Output đã nhận: {''.join(collected)}")
-
-
 def test_local_sender_receiver_roundtrip():
     data_port = find_free_port()
     key_port = find_free_port()
@@ -57,10 +29,10 @@ def test_local_sender_receiver_roundtrip():
         text=True,
     )
 
-   try:
-    time.sleep(2)
+    try:
+        time.sleep(2)
 
-    first_output = wait_for_output(receiver, "kênh khóa")
+        first_output = wait_for_output(receiver, "kênh khóa")
 
         sender = subprocess.run(
             [sys.executable, "sender.py"],
